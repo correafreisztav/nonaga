@@ -1,0 +1,66 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+#game-container {
+    width: 90vw;
+    max-width: 600px;
+    height: 90vh;
+    max-height: 600px;
+    margin-top: 20px;
+}
+
+#game-board {
+    width: 100%;
+    height: 100%;
+}
+
+.ring {
+    fill: #fff;
+    stroke: #555;
+    stroke-width: 3;
+    transition: fill 0.2s, stroke 0.2s;
+    cursor: pointer;
+}
+
+.ring:hover {
+    stroke: #007bff;
+}
+
+.ring.peripheral:hover {
+    stroke: #e83e8c;
+}
+
+.ring.selected {
+    stroke: #28a745;
+    stroke-width: 5;
+}
+
+.ring.valid-move {
+    fill: #c8e6c9; /* Verde claro para movimientos válidos */
+}
+
+.pawn {
+    stroke-width: 2;
+    stroke: #333;
+    pointer-events: none; /* Para que el clic vaya al aro de debajo */
+}
+
+.pawn.player1 {
+    fill: #ff4136; /* Rojo */
+}
+
+.pawn.player2 {
+    fill: #0074d9; /* Azul */
+}
+
+#game-info {
+    text-align: center;
+    font-size: 1.2em;
+    min-height: 50px;
+}
