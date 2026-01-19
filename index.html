@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nonaga</title>
+    <title>Nonaga Online</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <h1>Nonaga</h1>
+    
+    <div id="connection-panel" style="margin-bottom: 10px; text-align: center;">
+        <button id="btn-create-game" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Crear Nueva Partida Online</button>
+        <p id="room-link" style="margin-top: 10px; font-weight: bold; color: #007bff; display: none;"></p>
+    </div>
+
     <div id="game-info">
         <p id="status-text">Cargando...</p>
     </div>
@@ -15,6 +21,6 @@
         <svg id="game-board"></svg>
     </div>
 
-    <script src="js/game.js" defer></script>
+    <script type="module" src="js/game.js"></script>
 </body>
 </html>
