@@ -66,9 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Lógica para copiar al portapapeles
             btnCopy.addEventListener('click', () => {
                 const linkCompleto = window.location.href;
-                navigator.clipboard.writeText(linkCompleto).then(() => {
+                navigator.clipboard.writeText(roomId).then(() => {
                     btnCopy.textContent = "¡Copiado!";
-                    setTimeout(() => btnCopy.textContent = "📋 Copiar Link", 2000);
+                    setTimeout(() => btnCopy.textContent = "📋 Copiar Room ID", 2000);
                 });
             });
         }
