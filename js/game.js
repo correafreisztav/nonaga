@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const RING_SIZE = 50;
 
     // --- LISTAS PARA NOMBRES DE SALA ---
-    const adjetivos = ['veloz', 'furioso', 'rojo', 'azul', 'mistico', 'sabio', 'loco', 'dorado', 'feliz', 'antiguo', 'cosmico', 'ninja'];
-    const animales = ['puma', 'zorro', 'condor', 'carpincho', 'dragon', 'tigre', 'lobo', 'oso', 'halcon', 'gato', 'aguila', 'tiburon'];
+    const adjetivos = ['peludo', 'rabioso', 'colorado', 'andino', 'mistico', 'matero', 'loco', 'turuleco', 'feliz', 'rimbombante', 'cosmico', 'ninja', 'preniado'];
+    const animales = ['puma', 'zorro', 'condor', 'carpincho', 'dragon', 'tigre', 'lobo', 'oso', 'choike', 'gato', 'orangutan', 'lycalopex', 'mandril'];
 
     function generarNombreSala() {
         const adj = adjetivos[Math.floor(Math.random() * adjetivos.length)];
