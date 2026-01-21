@@ -8,16 +8,18 @@ body {
 }
 
 #game-container {
-    width: 90vw;
+    width: 95%;              /* Ocupa casi todo el ancho disponible */
     max-width: 600px;
-    height: 90vh;
-    max-height: 600px;
+    aspect-ratio: 1 / 1;     /* Mantenlo siempre CUADRADO */
     margin-top: 20px;
+    position: relative;      /* Para asegurar posición */
 }
 
 #game-board {
     width: 100%;
     height: 100%;
+    display: block;
+    touch-action: none; /* Importante para que el celular no intente hacer scroll al jugar */
 }
 
 .ring {

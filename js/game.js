@@ -181,12 +181,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return { x, y };
     };
 
-    const pixelToAxial = (x, y) => {
-        const rect = svg.getBoundingClientRect();
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const relativeX = x - centerX;
-        const relativeY = y - centerY;
+    const pixelToAxial = (clientX, clientY) => {
+        // Creamos un punto en el sistema de coordenadas del SVG
+        let pt = svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+
+        // Transformamos el punto de la pantalla al mundo del SVG (La matriz inversa)
+        let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+        // Ahora svgP.x y svgP.y están en coordenadas de nuestra caja 600x600
+        // Restamos el centro virtual (300, 300)
+        const relativeX = svgP.x - 300; 
+        const relativeY = svgP.y - 300;
+
         const q_frac = (2 / 3 * relativeX) / RING_SIZE;
         const r_frac = (-1 / 3 * relativeX + Math.sqrt(3) / 3 * relativeY) / RING_SIZE;
         const s_frac = -q_frac - r_frac;
@@ -240,8 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Renderizado ---
     function renderBoard() {
         svg.innerHTML = '';
-        const rect = svg.getBoundingClientRect();
-        const center = { x: rect.width / 2, y: rect.height / 2 };
+        
+        // ESTO ES LO NUEVO: Definimos una "cámara virtual" de 600x600
+        const VIEW_BOX_SIZE = 600;
+        svg.setAttribute('viewBox', `0 0 ${VIEW_BOX_SIZE} ${VIEW_BOX_SIZE}`);
+        
+        // El centro siempre será la mitad de nuestra caja virtual (300, 300)
+        const center = { x: VIEW_BOX_SIZE / 2, y: VIEW_BOX_SIZE / 2 };
 
         gameState.rings.forEach(ring => {
             const pixel = axialToPixel(ring.q, ring.r);
@@ -256,6 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
             polygon.dataset.q = ring.q;
             polygon.dataset.r = ring.r;
             polygon.addEventListener('click', onRingClick);
+            // Agregamos soporte para tocar en celular (touchstart)
+            polygon.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Evita doble click
+                onRingClick(e);
+            }, {passive: false});
             svg.appendChild(polygon);
         });
 
@@ -307,30 +325,57 @@ document.addEventListener('DOMContentLoaded', () => {
         svg.appendChild(carryState.carriedElement);
         visualElement.style.opacity = '0.2';
         document.addEventListener('mousemove', onDocumentMouseMove);
-        setTimeout(() => { document.addEventListener('click', tryPlaceRing); }, 50);
+        document.addEventListener('touchmove', onDocumentMouseMove, { passive: false });
+        setTimeout(() => { 
+            document.addEventListener('click', tryPlaceRing);
+            document.addEventListener('touchend', tryPlaceRing);
+        }, 50);
     }
 
     function onDocumentMouseMove(event) {
         if (!carryState.isCarrying) return;
+
+        // Prevent scrolling on touch devices
+        if (event.type === 'touchmove') {
+            event.preventDefault();
+        }
+
+        let clientX, clientY;
+        if (event.touches && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else {
+            clientX = event.clientX;
+            clientY = event.clientY;
+        }
+
         const CTM = svg.getScreenCTM();
-        const mouseX = (event.clientX - CTM.e) / CTM.a;
-        const mouseY = (event.clientY - CTM.f) / CTM.d;
+        const mouseX = (clientX - CTM.e) / CTM.a;
+        const mouseY = (clientY - CTM.f) / CTM.d;
         carryState.carriedElement.setAttribute('transform', `translate(${mouseX}, ${mouseY})`);
     }
 
     function tryPlaceRing(event) {
         if (!carryState.isCarrying) return;
         document.removeEventListener('mousemove', onDocumentMouseMove);
+        document.removeEventListener('touchmove', onDocumentMouseMove);
         document.removeEventListener('click', tryPlaceRing);
+        document.removeEventListener('touchend', tryPlaceRing);
         if (carryState.carriedElement) {
             carryState.carriedElement.remove();
             carryState.carriedElement = null;
         }
         carryState.isCarrying = false;
-        const CTM = svg.getScreenCTM();
-        const mouseX = (event.clientX - CTM.e) / CTM.a;
-        const mouseY = (event.clientY - CTM.f) / CTM.d;
-        const targetAxial = pixelToAxial(mouseX, mouseY);
+        let clientX, clientY;
+        if(event.changedTouches && event.changedTouches.length > 0) {
+             clientX = event.changedTouches[0].clientX;
+             clientY = event.changedTouches[0].clientY;
+        } else {
+             clientX = event.clientX;
+             clientY = event.clientY;
+        }
+        
+        const targetAxial = pixelToAxial(clientX, clientY);
         const originRing = carryState.originalRing;
 
         if (originRing.q === targetAxial.q && originRing.r === targetAxial.r) {
