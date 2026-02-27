@@ -1,254 +1,68 @@
-/* Variables para mantener los colores organizados */
-:root {
-    --primary-blue: #007bff;
-    --primary-green: #28a745;
-    --bg-color: #f4f7f6;
-    --text-dark: #333;
-    --panel-bg: #ffffff;
-}
-
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-color);
-    color: var(--text-dark);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-/* =========================================
-   VISTA LANDING
-   ========================================= */
-.landing-wrapper {
-    display: flex;
-    flex-direction: column; /* Apilado en celulares */
-    width: 100%;
-    max-width: 1000px;
-    margin: auto; /* Centra vertical y horizontalmente */
-    padding: 20px;
-    box-sizing: border-box;
-    align-items: center;
-    justify-content: center;
-    flex-grow: 1;
-}
-
-/* En pantallas grandes (Desktop), lo dividimos en dos columnas */
-@media (min-width: 768px) {
-    .landing-wrapper {
-        flex-direction: row;
-        justify-content: space-between;
-        gap: 40px;
-    }
-}
-
-.landing-left {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
-
-.landing-image {
-    max-width: 100%;
-    height: auto;
-    border-radius: 10px;
-    /* Un pequeño efecto de sombra para que resalte como el tablero de Catan */
-    filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.1)); 
-}
-
-.landing-right {
-    flex: 1;
+    font-family: sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-.landing-menu {
-    background: var(--panel-bg);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-    text-align: center;
-    width: 100%;
-    max-width: 380px;
-}
-
-.landing-menu h1 {
-    margin-top: 0;
-    font-size: 3em;
-    color: #2c3e50;
-    margin-bottom: 30px;
-}
-
-/* Controles del Menú */
-.panel {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-#room-input {
-    padding: 12px;
-    font-size: 16px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    text-align: center;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-#room-input:focus {
-    border-color: var(--primary-blue);
-}
-
-.divider {
-    color: #999;
-    font-size: 0.9em;
-    margin: 5px 0;
-}
-
-.secondary-options {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-    margin-top: 25px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
-}
-
-.rules-link {
-    color: #666;
-    text-decoration: none;
-    font-size: 0.9em;
-    transition: color 0.2s;
-}
-
-.rules-link:hover {
-    color: var(--primary-blue);
-    text-decoration: underline;
-}
-
-/* =========================================
-   SISTEMA DE BOTONES
-   ========================================= */
-.btn {
-    padding: 12px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
-}
-
-.btn:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-.btn:active { transform: translateY(1px); }
-
-.btn-green { background-color: var(--primary-green); color: white; }
-.btn-blue { background-color: var(--primary-blue); color: white; }
-
-.btn-outline {
-    background-color: transparent;
-    color: #555;
-    border: 2px solid #ccc;
-}
-
-.btn-outline:hover {
-    border-color: #888;
+    background-color: #f0f0f0;
     color: #333;
-}
-
-.btn-small {
-    padding: 8px 15px;
-    font-size: 14px;
-}
-
-.btn-white {
-    background-color: white;
-    color: #333;
-    border: 1px solid #ccc;
-}
-
-/* =========================================
-   VISTA DE JUEGO (Tablero)
-   ========================================= */
-.game-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-.game-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 15px;
-}
-
-.game-header h2 {
-    margin: 0;
-    font-size: 1.5em;
-    color: #333;
-}
-
-.room-info {
-    background: #e3f2fd;
-    padding: 8px 15px;
-    border-radius: 6px;
-    border: 1px solid #90caf9;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#room-code-text {
-    color: #0d47a1;
-    font-size: 1.1em;
 }
 
 #game-container {
-    width: 95%;              
+    width: 95%;              /* Ocupa casi todo el ancho disponible */
     max-width: 600px;
-    aspect-ratio: 1 / 1;     
-    position: relative;      
+    aspect-ratio: 1 / 1;     /* Mantenlo siempre CUADRADO */
+    margin-top: 20px;
+    position: relative;      /* Para asegurar posición */
 }
 
 #game-board {
     width: 100%;
     height: 100%;
     display: block;
-    touch-action: none; 
+    touch-action: none; /* Importante para que el celular no intente hacer scroll al jugar */
 }
 
-/* Elementos SVG del tablero */
-.ring { fill: #fff; stroke: #555; stroke-width: 3; transition: fill 0.2s, stroke 0.2s; cursor: pointer; }
-.ring:hover { stroke: #007bff; }
-.ring.peripheral:hover { stroke: #e83e8c; }
-.ring.selected { stroke: #28a745; stroke-width: 5; }
-.ring.valid-move { fill: #c8e6c9; }
-.pawn { stroke-width: 2; stroke: #333; pointer-events: none; }
-.pawn.player1 { fill: #ff4136; }
-.pawn.player2 { fill: #0074d9; }
+.ring {
+    fill: #fff;
+    stroke: #555;
+    stroke-width: 3;
+    transition: fill 0.2s, stroke 0.2s;
+    cursor: pointer;
+}
 
-#game-info { 
-    text-align: center; 
-    font-size: 1.2em; 
-    min-height: 30px; 
-    margin-bottom: 10px; 
-    font-weight: bold; 
+.ring:hover {
+    stroke: #007bff;
+}
+
+.ring.peripheral:hover {
+    stroke: #e83e8c;
+}
+
+.ring.selected {
+    stroke: #28a745;
+    stroke-width: 5;
+}
+
+.ring.valid-move {
+    fill: #c8e6c9; /* Verde claro para movimientos válidos */
+}
+
+.pawn {
+    stroke-width: 2;
+    stroke: #333;
+    pointer-events: none; /* Para que el clic vaya al aro de debajo */
+}
+
+.pawn.player1 {
+    fill: #ff4136; /* Rojo */
+}
+
+.pawn.player2 {
+    fill: #0074d9; /* Azul */
+}
+
+#game-info {
+    text-align: center;
+    font-size: 1.2em;
+    min-height: 50px;
 }

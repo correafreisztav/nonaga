@@ -18,23 +18,14 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 document.addEventListener('DOMContentLoaded', () => {
-    // === ELEMENTOS DEL DOM ===
     const svg = document.getElementById('game-board');
     const statusText = document.getElementById('status-text');
-    
-    // Contenedores de las vistas (NUEVO)
-    const landingView = document.getElementById('landing-view');
-    const gameView = document.getElementById('game-view');
-    
-    // Botones (NUEVO)
-    const btnLocalGame = document.getElementById('btn-local-game');
-    const btnLeave = document.getElementById('btn-leave');
-
-    // Elementos Online
     const btnCreate = document.getElementById('btn-create-game');
     const btnJoin = document.getElementById('btn-join'); 
     const inputRoom = document.getElementById('room-input'); 
     const connectionPanel = document.getElementById('connection-panel');
+    
+    // Elementos nuevos para copiar código
     const roomDisplay = document.getElementById('room-display');
     const roomCodeText = document.getElementById('room-code-text');
     const btnCopy = document.getElementById('btn-copy');
@@ -56,52 +47,36 @@ document.addEventListener('DOMContentLoaded', () => {
     let roomId = null;
     let myPlayerId = null; 
     let isOnline = false;
-    let isSpectator = false;
+    let isSpectator = false; // Nueva variable para controlar al 3ro
 
-    // === LÓGICA DE VISTAS (NUEVO) ===
-    function showGameView() {
-        landingView.style.display = 'none';
-        gameView.style.display = 'flex'; // Usamos flex porque la clase .game-wrapper lo usa
-        renderBoard(); // Forzamos un renderizado inicial para evitar problemas visuales
-    }
-
-    function showLandingView() {
-        landingView.style.display = 'flex';
-        gameView.style.display = 'none';
-    }
-
-    // === LÓGICA DE BOTONES Y URL ===
+    // --- LOGICA DE BOTONES Y URL ---
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoom = urlParams.get('room');
 
-    // 1. ¿Viene por un link de sala online?
     if (urlRoom) {
+        if (connectionPanel) connectionPanel.style.display = 'none';
         roomId = urlRoom;
         isOnline = true;
         
-        // MOSTRAR LA VISTA DE JUEGO (NUEVO)
-        showGameView();
-        
+        // MOSTRAR EL CÓDIGO ARRIBA
         if (roomDisplay) {
-            roomDisplay.style.display = 'flex'; // Mostrar panel de código de sala
+            roomDisplay.style.display = 'block';
             roomCodeText.textContent = roomId;
             
+            // Lógica para copiar al portapapeles
             btnCopy.addEventListener('click', () => {
+                const linkCompleto = window.location.href;
                 navigator.clipboard.writeText(roomId).then(() => {
                     btnCopy.textContent = "¡Copiado!";
-                    setTimeout(() => btnCopy.textContent = "📋 Copiar ID", 2000);
+                    setTimeout(() => btnCopy.textContent = "📋 Copiar Room ID", 2000);
                 });
             });
         }
 
         statusText.innerHTML = `Conectando a sala: <b>${roomId}</b>...`; 
         joinGame(roomId);
-    } else {
-        // 2. Si no viene por link, mostrar la Landing Page (NUEVO)
-        showLandingView();
     }
 
-    // Botón: Crear Sala
     if (btnCreate) {
         btnCreate.addEventListener('click', () => {
             const nuevoNombre = generarNombreSala();
@@ -109,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Botón: Unirse
     if (btnJoin) {
         btnJoin.addEventListener('click', () => {
             const salaEscrita = inputRoom.value.trim(); 
@@ -121,27 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Botón: Jugar Local (NUEVO)
-    if (btnLocalGame) {
-        btnLocalGame.addEventListener('click', () => {
-            isOnline = false;
-            // Ocultar info de sala si se juega local
-            if (roomDisplay) roomDisplay.style.display = 'none'; 
-            showGameView();
-            initGame();
-        });
-    }
-
-    // Botón: Salir (NUEVO)
-    if (btnLeave) {
-        btnLeave.addEventListener('click', () => {
-            // Recarga la página limpiando cualquier parámetro en la URL
-            window.location.href = window.location.pathname; 
-        });
-    }
-
-
     // --- LÓGICA DE FIREBASE ---
+
     function joinGame(id) {
         const gameRef = ref(db, 'games/' + id);
         
@@ -149,34 +104,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 
+                // 1. CHEQUEAR SI YA TENGO IDENTIDAD GUARDADA (Soy P1 o P2 que volvio)
                 const storedId = localStorage.getItem(`nonaga_player_${id}`);
 
                 if (storedId) {
                     myPlayerId = parseInt(storedId);
                     console.log("Regresando como Jugador " + myPlayerId);
                 } else {
+                    // 2. SOY NUEVO. ¿HAY LUGAR?
+                    // Si ya hay 2 jugadores (playerCount >= 2), soy espectador
                     if (data.playerCount && data.playerCount >= 2) {
                         alert("¡La sala está llena! Estás entrando en modo ESPECTADOR.");
                         isSpectator = true;
-                        myPlayerId = 0;
+                        myPlayerId = 0; // 0 significa espectador
                         statusText.style.color = "purple";
                     } else {
+                        // Hay lugar, soy el Jugador 2
                         myPlayerId = 2;
                         localStorage.setItem(`nonaga_player_${id}`, 2);
+                        // Aumentamos el contador en la DB
                         update(gameRef, { playerCount: 2 });
                     }
                 }
             } else {
+                // PARTIDA NUEVA: Soy el Jugador 1
                 myPlayerId = 1;
                 localStorage.setItem(`nonaga_player_${id}`, 1);
                 initGame(); 
+                // Guardamos estado inicial y ponemos contador en 1
                 gameState.playerCount = 1; 
                 saveGameState(); 
             }
             
+            // ESCUCHAR CAMBIOS
             onValue(gameRef, (snap) => {
                 const serverData = snap.val();
                 if (serverData) {
+                    // Preservamos el contador si no viene en el update
                     const currentCount = serverData.playerCount || gameState.playerCount;
                     gameState = serverData;
                     gameState.playerCount = currentCount;
@@ -201,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPawn: null,
         lastRelocatedRingCoords: null,
         winner: null,
-        playerCount: 1 
+        playerCount: 1 // Nuevo campo
     };
 
     let carryState = {
@@ -210,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         originalRing: null,
     };
 
-    // --- COORDENADAS ---
+    // ... (El código de Coordenadas axialToPixel, etc. SIGUE IGUAL) ...
     const axialToPixel = (q, r) => {
         const x = RING_SIZE * (3 / 2 * q);
         const y = RING_SIZE * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
@@ -218,12 +182,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const pixelToAxial = (clientX, clientY) => {
+        // Creamos un punto en el sistema de coordenadas del SVG
         let pt = svg.createSVGPoint();
         pt.x = clientX;
         pt.y = clientY;
+
+        // Transformamos el punto de la pantalla al mundo del SVG (La matriz inversa)
         let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+        // Ahora svgP.x y svgP.y están en coordenadas de nuestra caja 600x600
+        // Restamos el centro virtual (300, 300)
         const relativeX = svgP.x - 300; 
         const relativeY = svgP.y - 300;
+
         const q_frac = (2 / 3 * relativeX) / RING_SIZE;
         const r_frac = (-1 / 3 * relativeX + Math.sqrt(3) / 3 * relativeY) / RING_SIZE;
         const s_frac = -q_frac - r_frac;
@@ -276,13 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Renderizado ---
     function renderBoard() {
-        // Evitar que se intente renderizar si el contenedor está oculto y no tiene ancho
-        if(gameView.style.display === 'none') return;
-
         svg.innerHTML = '';
         
+        // ESTO ES LO NUEVO: Definimos una "cámara virtual" de 600x600
         const VIEW_BOX_SIZE = 600;
         svg.setAttribute('viewBox', `0 0 ${VIEW_BOX_SIZE} ${VIEW_BOX_SIZE}`);
+        
+        // El centro siempre será la mitad de nuestra caja virtual (300, 300)
         const center = { x: VIEW_BOX_SIZE / 2, y: VIEW_BOX_SIZE / 2 };
 
         gameState.rings.forEach(ring => {
@@ -298,8 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
             polygon.dataset.q = ring.q;
             polygon.dataset.r = ring.r;
             polygon.addEventListener('click', onRingClick);
+            // Agregamos soporte para tocar en celular (touchstart)
             polygon.addEventListener('touchstart', (e) => {
-                e.preventDefault(); 
+                e.preventDefault(); // Evita doble click
                 onRingClick(e);
             }, {passive: false});
             svg.appendChild(polygon);
@@ -323,7 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Manejo de Eventos ---
     function onRingClick(event) {
         event.stopPropagation();
-        if (isSpectator) return;
+        
+        // BLOQUEO: Si soy espectador o no es mi turno
+        if (isSpectator) return; // Los espectadores no tocan nada
         if (isOnline && gameState.currentPlayer !== myPlayerId) return;
         if (gameState.winner) return;
 
@@ -360,7 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function onDocumentMouseMove(event) {
         if (!carryState.isCarrying) return;
-        if (event.type === 'touchmove') event.preventDefault();
+
+        // Prevent scrolling on touch devices
+        if (event.type === 'touchmove') {
+            event.preventDefault();
+        }
 
         let clientX, clientY;
         if (event.touches && event.touches.length > 0) {
@@ -446,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard(); updateStatus();
     }
 
-    // --- Helpers ---
+    // --- Helpers (Igual) ---
     function findRing(q, r) { return gameState.rings.find(ring => ring.q === q && ring.r === r); }
     function getNeighbors(q, r, ringsList = gameState.rings) {
         const directions = [{q: 1, r: 0}, {q: 1, r: -1}, {q: 0, r: -1}, {q: -1, r: 0}, {q: -1, r: 1}, {q: 0, r: 1}];
@@ -538,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function highlightElements() {
         document.querySelectorAll('.ring').forEach(r => r.classList.remove('selected', 'valid-move', 'peripheral'));
         
-        if (isSpectator) return;
+        if (isSpectator) return; // Espectadores no ven highlights
         if (isOnline && gameState.currentPlayer !== myPlayerId) return;
 
         if (gameState.selectedPawn) {
@@ -562,6 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-    
+
+    if (!isOnline) {
+        initGame(); 
+    }
     window.addEventListener('resize', renderBoard);
 });
