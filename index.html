@@ -7,32 +7,48 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1>Nonaga</h1>
-    
-    <div id="connection-panel" style="margin-bottom: 20px; text-align: center; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+
+    <div class="main-layout">
         
-        <input type="text" id="room-input" placeholder="Código de sala..." style="padding: 10px; font-size: 16px; width: 150px; border: 1px solid #ccc; border-radius: 4px;">
-        <button id="btn-join" style="padding: 10px 15px; font-size: 16px; cursor: pointer; background-color: #28a745; color: white; border: none; border-radius: 4px;">Unirse</button>
-        
-        <span style="margin: 0 10px;"> o </span>
+        <div class="left-column">
+            
+            <div id="room-display" class="room-info" style="display: none;">
+                <span>Sala: </span>
+                <strong id="room-code-text">---</strong>
+                <button id="btn-copy" class="btn btn-outline btn-small">📋 Copiar Room ID</button>
+            </div>
 
-        <button id="btn-create-game" style="padding: 10px 15px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px;">Crear Sala Random</button>
-        
-        <p id="room-link" style="margin-top: 10px; font-weight: bold; color: #333; display: none; background: #e9ecef; padding: 10px; border-radius: 4px;"></p>
-    </div>
+            <div id="game-info">
+                <p id="status-text">Iniciando...</p>
+            </div>
 
-    <div id="room-display" style="display: none; background: #e3f2fd; padding: 10px; margin-bottom: 10px; border-radius: 8px; text-align: center; border: 1px solid #90caf9;">
-        <span>Sala: </span>
-        <strong id="room-code-text" style="font-size: 1.2em; color: #0d47a1;">---</strong>
-        <button id="btn-copy" style="margin-left: 10px; cursor: pointer; padding: 5px 10px; background: #fff; border: 1px solid #ccc; border-radius: 4px;">📋 Copiar Room ID</button>
-    </div>
+            <div id="game-container">
+                <svg id="game-board"></svg>
+            </div>
+            
+        </div>
 
-    <div id="game-info">
-        <p id="status-text">Iniciando...</p>
-    </div>
+        <div class="right-column">
+            <div class="menu-card">
+                <h1>Nonaga</h1>
+                
+                <div id="connection-panel">
+                    <input type="text" id="room-input" class="input-field" placeholder="Código de sala...">
+                    <button id="btn-join" class="btn btn-green">Unirse a Sala</button>
+                    
+                    <div class="divider">— o —</div>
 
-    <div id="game-container">
-        <svg id="game-board"></svg>
+                    <button id="btn-create-game" class="btn btn-blue">Crear Sala Random</button>
+                    
+                    <p id="room-link" style="display: none;"></p>
+                </div>
+
+                <div class="rules-container">
+                    <a href="https://matematicamente.es/GAMES/Nonaga_ES.pdf" target="_blank" class="rules-link">📖 Cómo jugar (Reglas en PDF)</a>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script type="module" src="js/game.js"></script>

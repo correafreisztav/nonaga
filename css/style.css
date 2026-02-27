@@ -1,68 +1,211 @@
+/* =========================================
+   VARIABLES Y ESTILOS BASE
+   ========================================= */
+:root {
+    --primary-blue: #3b82f6;
+    --primary-green: #4ade80;
+    --primary-green-dark: #22c55e;
+    --bg-color: #f3f4f6;
+    --text-dark: #1f2937;
+    --card-bg: #ffffff;
+}
+
 body {
-    font-family: sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center; /* Centra el contenido en la pantalla */
+    align-items: center;
+}
+
+/* =========================================
+   LAYOUT PRINCIPAL (Dos Columnas)
+   ========================================= */
+.main-layout {
+    display: flex;
+    flex-direction: column; /* En celular se apilan */
+    width: 100%;
+    max-width: 1100px;
+    padding: 20px;
+    box-sizing: border-box;
+    gap: 40px;
+    align-items: center;
+}
+
+/* En pantallas de PC, se ponen lado a lado */
+@media (min-width: 850px) {
+    .main-layout {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+    }
+}
+
+.left-column {
+    flex: 1.2;
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #f0f0f0;
-    color: #333;
+    width: 100%;
+}
+
+.right-column {
+    flex: 0.8;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* =========================================
+   TARJETA DE MENÚ (Derecha)
+   ========================================= */
+.menu-card {
+    background: var(--card-bg);
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    text-align: center;
+    width: 100%;
+    max-width: 350px;
+}
+
+.menu-card h1 {
+    margin-top: 0;
+    font-size: 3em;
+    color: #1e293b;
+    margin-bottom: 30px;
+}
+
+#connection-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.input-field {
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.input-field:focus {
+    border-color: var(--primary-blue);
+}
+
+.divider {
+    color: #94a3b8;
+    font-size: 0.9em;
+    margin: 5px 0;
+}
+
+.rules-container {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.rules-link {
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.95em;
+    transition: color 0.2s;
+}
+
+.rules-link:hover {
+    color: var(--primary-blue);
+    text-decoration: underline;
+}
+
+/* =========================================
+   BOTONES
+   ========================================= */
+.btn {
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-green { background-color: var(--primary-green-dark); color: white; }
+.btn-blue { background-color: var(--primary-blue); color: white; }
+
+.btn-outline {
+    background-color: transparent;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
+/* =========================================
+   ÁREA DE JUEGO Y TABLERO (Izquierda)
+   ========================================= */
+.room-info {
+    background: #e0f2fe;
+    padding: 10px 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#room-code-text {
+    color: #0369a1;
+    font-size: 1.2em;
+}
+
+#game-info {
+    text-align: center;
+    font-size: 1.3em;
+    min-height: 40px;
+    margin-bottom: 10px;
+    font-weight: bold;
 }
 
 #game-container {
-    width: 95%;              /* Ocupa casi todo el ancho disponible */
-    max-width: 600px;
-    aspect-ratio: 1 / 1;     /* Mantenlo siempre CUADRADO */
-    margin-top: 20px;
-    position: relative;      /* Para asegurar posición */
+    width: 100%;              
+    max-width: 550px;
+    aspect-ratio: 1 / 1;     
+    position: relative;      
 }
 
 #game-board {
     width: 100%;
     height: 100%;
     display: block;
-    touch-action: none; /* Importante para que el celular no intente hacer scroll al jugar */
+    touch-action: none; 
 }
 
-.ring {
-    fill: #fff;
-    stroke: #555;
-    stroke-width: 3;
-    transition: fill 0.2s, stroke 0.2s;
-    cursor: pointer;
-}
-
-.ring:hover {
-    stroke: #007bff;
-}
-
-.ring.peripheral:hover {
-    stroke: #e83e8c;
-}
-
-.ring.selected {
-    stroke: #28a745;
-    stroke-width: 5;
-}
-
-.ring.valid-move {
-    fill: #c8e6c9; /* Verde claro para movimientos válidos */
-}
-
-.pawn {
-    stroke-width: 2;
-    stroke: #333;
-    pointer-events: none; /* Para que el clic vaya al aro de debajo */
-}
-
-.pawn.player1 {
-    fill: #ff4136; /* Rojo */
-}
-
-.pawn.player2 {
-    fill: #0074d9; /* Azul */
-}
-
-#game-info {
-    text-align: center;
-    font-size: 1.2em;
-    min-height: 50px;
-}
+/* Elementos del SVG (Idénticos a tu original) */
+.ring { fill: #fff; stroke: #555; stroke-width: 3; transition: fill 0.2s, stroke 0.2s; cursor: pointer; }
+.ring:hover { stroke: var(--primary-blue); }
+.ring.peripheral:hover { stroke: #e83e8c; }
+.ring.selected { stroke: var(--primary-green-dark); stroke-width: 5; }
+.ring.valid-move { fill: #dcfce7; }
+.pawn { stroke-width: 2; stroke: #333; pointer-events: none; }
+.pawn.player1 { fill: #ef4444; }
+.pawn.player2 { fill: #3b82f6; }
