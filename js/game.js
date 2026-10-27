@@ -232,7 +232,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateStatus();
                 }
             });
-        }).catch(console.error);
+        }).catch((err) => {
+            console.error(err);
+            statusText.textContent = `Error conectando a Firebase (${err.code || err.message}). Revisá las Reglas de Realtime Database.`;
+            statusText.style.color = '#e74c3c';
+        });
     }
 
     function saveGameState() {
