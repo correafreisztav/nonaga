@@ -15,7 +15,7 @@
             <div id="room-display" class="room-info" style="display: none;">
                 <span>Sala: </span>
                 <strong id="room-code-text">---</strong>
-                <button id="btn-copy" class="btn btn-outline btn-small">📋 Copiar Room ID</button>
+                <button id="btn-copy" class="btn btn-outline btn-small">📋 Copiar Link</button>
             </div>
 
             <div id="game-info">
@@ -39,12 +39,23 @@
                     <div class="divider">— o —</div>
 
                     <button id="btn-create-game" class="btn btn-blue">Crear Sala Random</button>
-                    
-                    <p id="room-link" style="display: none;"></p>
+
+                    <div class="divider">— o jugar acá —</div>
+
+                    <div class="bot-controls">
+                        <button id="btn-mode-toggle" class="btn btn-outline">Modo: vs Bot (Medio)</button>
+                    </div>
                 </div>
 
                 <div class="rules-container">
-                    <a href="https://matematicamente.es/GAMES/Nonaga_ES.pdf" target="_blank" class="rules-link">📖 Cómo jugar (Reglas en PDF)</a>
+                    <ol class="simple-rules">
+                        <li>Rojo mueve un peón hasta chocar con algo.</li>
+                        <li>Rojo mueve un hexágono vacío del borde.</li>
+                        <li>Juega Azul. El primero en juntar sus 3 fichas gana.</li>
+                    </ol>
+                    <p class="author-credit">
+                        Juego original de <a href="https://matematicamente.es/GAMES/Nonaga_ES.pdf" target="_blank" rel="noopener noreferrer" class="rules-link">Víktor Bautista i Roca</a> (Steffen Spiele)
+                    </p>
                 </div>
             </div>
         </div>

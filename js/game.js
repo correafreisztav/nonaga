@@ -24,13 +24,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnJoin = document.getElementById('btn-join'); 
     const inputRoom = document.getElementById('room-input'); 
     const connectionPanel = document.getElementById('connection-panel');
+    const btnModeToggle = document.getElementById('btn-mode-toggle');
     
-    // Elementos nuevos para copiar código
+    // Elementos para copiar link de sala
     const roomDisplay = document.getElementById('room-display');
     const roomCodeText = document.getElementById('room-code-text');
     const btnCopy = document.getElementById('btn-copy');
 
     const RING_SIZE = 50;
+    const HEX_DIRECTIONS = [
+        { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+        { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+    ];
 
     // --- LISTAS PARA NOMBRES DE SALA ---
     const adjetivos = ['peludo', 'rabioso', 'colorado', 'andino', 'mistico', 'matero', 'loco', 'turuleco', 'feliz', 'rimbombante', 'cosmico', 'ninja', 'preniado'];
@@ -43,118 +48,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${ani}-${adj}-${num}`;
     }
 
-    // --- Variables Online ---
+    // --- Variables Online y Bot ---
     let roomId = null;
     let myPlayerId = null; 
     let isOnline = false;
-    let isSpectator = false; // Nueva variable para controlar al 3ro
+    let isSpectator = false;
 
-    // --- LOGICA DE BOTONES Y URL ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlRoom = urlParams.get('room');
+    // Modos locales: 'bot-medium', 'bot-hard', 'bot-easy', 'local-2p'
+    const modes = [
+        { id: 'bot-medium', label: 'Modo: vs Bot (Medio)', isBot: true, diff: 'medium' },
+        { id: 'bot-hard',   label: 'Modo: vs Bot (Difícil)', isBot: true, diff: 'hard' },
+        { id: 'bot-easy',   label: 'Modo: vs Bot (Fácil)', isBot: true, diff: 'easy' },
+        { id: 'local-2p',   label: 'Modo: 2 Jugadores acá', isBot: false, diff: null }
+    ];
+    let currentModeIndex = 0;
+    const BOT_PLAYER = 2; // El Bot juega con Azul
+    let botThinking = false;
+    let botTimeouts = [];
 
-    if (urlRoom) {
-        if (connectionPanel) connectionPanel.style.display = 'none';
-        roomId = urlRoom;
-        isOnline = true;
-        
-        // MOSTRAR EL CÓDIGO ARRIBA
-        if (roomDisplay) {
-            roomDisplay.style.display = 'block';
-            roomCodeText.textContent = roomId;
-            
-            // Lógica para copiar al portapapeles
-            btnCopy.addEventListener('click', () => {
-                const linkCompleto = window.location.href;
-                navigator.clipboard.writeText(roomId).then(() => {
-                    btnCopy.textContent = "¡Copiado!";
-                    setTimeout(() => btnCopy.textContent = "📋 Copiar Room ID", 2000);
-                });
-            });
-        }
-
-        statusText.innerHTML = `Conectando a sala: <b>${roomId}</b>...`; 
-        joinGame(roomId);
+    function clearBotTimeouts() {
+        botTimeouts.forEach(t => clearTimeout(t));
+        botTimeouts = [];
+        botThinking = false;
     }
 
-    if (btnCreate) {
-        btnCreate.addEventListener('click', () => {
-            const nuevoNombre = generarNombreSala();
-            window.location.search = `?room=${nuevoNombre}`;
+    if (btnModeToggle) {
+        btnModeToggle.addEventListener('click', () => {
+            currentModeIndex = (currentModeIndex + 1) % modes.length;
+            btnModeToggle.textContent = modes[currentModeIndex].label;
+            initGame();
         });
-    }
-
-    if (btnJoin) {
-        btnJoin.addEventListener('click', () => {
-            const salaEscrita = inputRoom.value.trim(); 
-            if (salaEscrita) {
-                window.location.search = `?room=${salaEscrita}`;
-            } else {
-                alert("Por favor escribe un nombre de sala primero.");
-            }
-        });
-    }
-
-    // --- LÓGICA DE FIREBASE ---
-
-    function joinGame(id) {
-        const gameRef = ref(db, 'games/' + id);
-        
-        get(gameRef).then((snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                
-                // 1. CHEQUEAR SI YA TENGO IDENTIDAD GUARDADA (Soy P1 o P2 que volvio)
-                const storedId = localStorage.getItem(`nonaga_player_${id}`);
-
-                if (storedId) {
-                    myPlayerId = parseInt(storedId);
-                    console.log("Regresando como Jugador " + myPlayerId);
-                } else {
-                    // 2. SOY NUEVO. ¿HAY LUGAR?
-                    // Si ya hay 2 jugadores (playerCount >= 2), soy espectador
-                    if (data.playerCount && data.playerCount >= 2) {
-                        alert("¡La sala está llena! Estás entrando en modo ESPECTADOR.");
-                        isSpectator = true;
-                        myPlayerId = 0; // 0 significa espectador
-                        statusText.style.color = "purple";
-                    } else {
-                        // Hay lugar, soy el Jugador 2
-                        myPlayerId = 2;
-                        localStorage.setItem(`nonaga_player_${id}`, 2);
-                        // Aumentamos el contador en la DB
-                        update(gameRef, { playerCount: 2 });
-                    }
-                }
-            } else {
-                // PARTIDA NUEVA: Soy el Jugador 1
-                myPlayerId = 1;
-                localStorage.setItem(`nonaga_player_${id}`, 1);
-                initGame(); 
-                // Guardamos estado inicial y ponemos contador en 1
-                gameState.playerCount = 1; 
-                saveGameState(); 
-            }
-            
-            // ESCUCHAR CAMBIOS
-            onValue(gameRef, (snap) => {
-                const serverData = snap.val();
-                if (serverData) {
-                    // Preservamos el contador si no viene en el update
-                    const currentCount = serverData.playerCount || gameState.playerCount;
-                    gameState = serverData;
-                    gameState.playerCount = currentCount;
-                    
-                    renderBoard();
-                    updateStatus();
-                }
-            });
-        }).catch(console.error);
-    }
-
-    function saveGameState() {
-        if (!isOnline) return;
-        set(ref(db, 'games/' + roomId), gameState);
     }
 
     // --- ESTADO DEL JUEGO ---
@@ -165,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPawn: null,
         lastRelocatedRingCoords: null,
         winner: null,
-        playerCount: 1 // Nuevo campo
+        playerCount: 1
     };
 
     let carryState = {
@@ -174,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         originalRing: null,
     };
 
-    // ... (El código de Coordenadas axialToPixel, etc. SIGUE IGUAL) ...
+    // --- Coordenadas Hexagonales ---
     const axialToPixel = (q, r) => {
         const x = RING_SIZE * (3 / 2 * q);
         const y = RING_SIZE * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
@@ -182,16 +105,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const pixelToAxial = (clientX, clientY) => {
-        // Creamos un punto en el sistema de coordenadas del SVG
         let pt = svg.createSVGPoint();
         pt.x = clientX;
         pt.y = clientY;
-
-        // Transformamos el punto de la pantalla al mundo del SVG (La matriz inversa)
         let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
 
-        // Ahora svgP.x y svgP.y están en coordenadas de nuestra caja 600x600
-        // Restamos el centro virtual (300, 300)
         const relativeX = svgP.x - 300; 
         const relativeY = svgP.y - 300;
 
@@ -218,8 +136,113 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    function hexDist(a, b) {
+        return (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs((-a.q - a.r) - (-b.q - b.r))) / 2;
+    }
+
+    // --- LOGICA DE BOTONES Y URL ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRoom = urlParams.get('room');
+
+    if (urlRoom) {
+        if (connectionPanel) connectionPanel.style.display = 'none';
+        roomId = urlRoom;
+        isOnline = true;
+        
+        if (roomDisplay) {
+            roomDisplay.style.display = 'flex';
+            roomCodeText.textContent = roomId;
+            
+            // Copia el link completo (ej: https://nonaga.com/?room=...)
+            btnCopy.addEventListener('click', () => {
+                const linkCompleto = window.location.href;
+                navigator.clipboard.writeText(linkCompleto).then(() => {
+                    btnCopy.textContent = "¡Link copiado!";
+                    setTimeout(() => btnCopy.textContent = "📋 Copiar Link", 2000);
+                });
+            });
+        }
+
+        statusText.innerHTML = `Conectando a sala: <b>${roomId}</b>...`; 
+        joinGame(roomId);
+    }
+
+    if (btnCreate) {
+        btnCreate.addEventListener('click', () => {
+            const nuevoNombre = generarNombreSala();
+            window.location.search = `?room=${nuevoNombre}`;
+        });
+    }
+
+    if (btnJoin) {
+        btnJoin.addEventListener('click', () => {
+            let salaEscrita = inputRoom.value.trim(); 
+            if (salaEscrita) {
+                if (salaEscrita.includes('room=')) {
+                    try {
+                        salaEscrita = new URL(salaEscrita).searchParams.get('room') || salaEscrita;
+                    } catch (_) {}
+                }
+                window.location.search = `?room=${salaEscrita}`;
+            } else {
+                alert("Por favor escribe un nombre de sala primero.");
+            }
+        });
+    }
+
+    // --- LÓGICA DE FIREBASE ---
+    function joinGame(id) {
+        const gameRef = ref(db, 'games/' + id);
+        
+        get(gameRef).then((snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const storedId = localStorage.getItem(`nonaga_player_${id}`);
+
+                if (storedId) {
+                    myPlayerId = parseInt(storedId);
+                } else {
+                    if (data.playerCount && data.playerCount >= 2) {
+                        alert("¡La sala está llena! Estás entrando en modo ESPECTADOR.");
+                        isSpectator = true;
+                        myPlayerId = 0;
+                        statusText.style.color = "purple";
+                    } else {
+                        myPlayerId = 2;
+                        localStorage.setItem(`nonaga_player_${id}`, 2);
+                        update(gameRef, { playerCount: 2 });
+                    }
+                }
+            } else {
+                myPlayerId = 1;
+                localStorage.setItem(`nonaga_player_${id}`, 1);
+                initGame(); 
+                gameState.playerCount = 1; 
+                saveGameState(); 
+            }
+            
+            onValue(gameRef, (snap) => {
+                const serverData = snap.val();
+                if (serverData) {
+                    const currentCount = serverData.playerCount || gameState.playerCount;
+                    gameState = serverData;
+                    gameState.playerCount = currentCount;
+                    
+                    renderBoard();
+                    updateStatus();
+                }
+            });
+        }).catch(console.error);
+    }
+
+    function saveGameState() {
+        if (!isOnline) return;
+        set(ref(db, 'games/' + roomId), gameState);
+    }
+
     // --- Inicialización ---
     function initGame() {
+        clearBotTimeouts();
         const initialCoords = [];
         const radius = 2;
         for (let q = -radius; q <= radius; q++) {
@@ -249,11 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBoard() {
         svg.innerHTML = '';
         
-        // ESTO ES LO NUEVO: Definimos una "cámara virtual" de 600x600
         const VIEW_BOX_SIZE = 600;
         svg.setAttribute('viewBox', `0 0 ${VIEW_BOX_SIZE} ${VIEW_BOX_SIZE}`);
-        
-        // El centro siempre será la mitad de nuestra caja virtual (300, 300)
         const center = { x: VIEW_BOX_SIZE / 2, y: VIEW_BOX_SIZE / 2 };
 
         gameState.rings.forEach(ring => {
@@ -269,9 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
             polygon.dataset.q = ring.q;
             polygon.dataset.r = ring.r;
             polygon.addEventListener('click', onRingClick);
-            // Agregamos soporte para tocar en celular (touchstart)
             polygon.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Evita doble click
+                e.preventDefault();
                 onRingClick(e);
             }, {passive: false});
             svg.appendChild(polygon);
@@ -296,9 +315,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function onRingClick(event) {
         event.stopPropagation();
         
-        // BLOQUEO: Si soy espectador o no es mi turno
-        if (isSpectator) return; // Los espectadores no tocan nada
+        if (isSpectator) return;
         if (isOnline && gameState.currentPlayer !== myPlayerId) return;
+        if (!isOnline && modes[currentModeIndex].isBot && (gameState.currentPlayer === BOT_PLAYER || botThinking)) return;
         if (gameState.winner) return;
 
         const q = parseInt(event.target.dataset.q);
@@ -335,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function onDocumentMouseMove(event) {
         if (!carryState.isCarrying) return;
 
-        // Prevent scrolling on touch devices
         if (event.type === 'touchmove') {
             event.preventDefault();
         }
@@ -384,9 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const otherRings = gameState.rings.filter(r => r !== originRing);
         const isOccupied = otherRings.some(r => r.q === targetAxial.q && r.r === targetAxial.r);
-        const neighborsDirections = [{q: 1, r: 0}, {q: 1, r: -1}, {q: 0, r: -1}, {q: -1, r: 0}, {q: -1, r: 1}, {q: 0, r: 1}];
         let touchingCount = 0;
-        neighborsDirections.forEach(dir => {
+        HEX_DIRECTIONS.forEach(dir => {
             if (otherRings.some(r => r.q === targetAxial.q + dir.q && r.r === targetAxial.r + dir.r)) touchingCount++;
         });
 
@@ -397,6 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
             gameState.turnPhase = 'MOVE_PAWN';
             renderBoard(); updateStatus(); saveGameState();
+            maybeTriggerBotTurn();
         } else {
             renderBoard();
         }
@@ -424,42 +442,42 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoard(); updateStatus();
     }
 
-    // --- Helpers (Igual) ---
-    function findRing(q, r) { return gameState.rings.find(ring => ring.q === q && ring.r === r); }
+    // --- Helpers ---
+    function findRing(q, r, ringsList = gameState.rings) { return ringsList.find(ring => ring.q === q && ring.r === r); }
     function getNeighbors(q, r, ringsList = gameState.rings) {
-        const directions = [{q: 1, r: 0}, {q: 1, r: -1}, {q: 0, r: -1}, {q: -1, r: 0}, {q: -1, r: 1}, {q: 0, r: 1}];
-        return directions.map(dir => {
+        return HEX_DIRECTIONS.map(dir => {
             const nQ = q + dir.q;
             const nR = r + dir.r;
             return ringsList.find(ring => ring.q === nQ && ring.r === nR);
         }).filter(Boolean);
     }
-    function isValidPawnMove(from, to) {
+    function isValidPawnMove(from, to, ringsList = gameState.rings) {
         if (!from || !to || to.pawn) return false;
         const dq = to.q - from.q;
         const dr = to.r - from.r;
         const ds = (-to.q - to.r) - (-from.q - from.r);
         if (dq === 0 || dr === 0 || ds === 0) {
             const dist = (Math.abs(dq) + Math.abs(dr) + Math.abs(ds)) / 2;
+            if (dist === 0) return false;
             const stepQ = dq / dist;
             const stepR = dr / dist;
             for (let i = 1; i < dist; i++) {
-                const intermediateRing = findRing(from.q + stepQ * i, from.r + stepR * i);
+                const intermediateRing = findRing(from.q + stepQ * i, from.r + stepR * i, ringsList);
                 if (!intermediateRing || intermediateRing.pawn) return false;
             }
             const nextQ = to.q + stepQ;
             const nextR = to.r + stepR;
-            const nextRing = findRing(nextQ, nextR);
+            const nextRing = findRing(nextQ, nextR, ringsList);
             if (nextRing && !nextRing.pawn) return false;
             return true;
         }
         return false;
     }
-    function isPeripheral(ring) { return getNeighbors(ring.q, ring.r).length < 6; }
-    function isValidRingToRemove(ring) {
-        if (!ring || ring.pawn || !isPeripheral(ring)) return false;
-        if (gameState.lastRelocatedRingCoords && ring.q === gameState.lastRelocatedRingCoords.q && ring.r === gameState.lastRelocatedRingCoords.r) return false;
-        const tempRings = gameState.rings.filter(r => r !== ring);
+    function isPeripheral(ring, ringsList = gameState.rings) { return getNeighbors(ring.q, ring.r, ringsList).length < 6; }
+    function isValidRingToRemove(ring, ringsList = gameState.rings, lastCoords = gameState.lastRelocatedRingCoords) {
+        if (!ring || ring.pawn || !isPeripheral(ring, ringsList)) return false;
+        if (lastCoords && ring.q === lastCoords.q && ring.r === lastCoords.r) return false;
+        const tempRings = ringsList.filter(r => r !== ring);
         return isBoardConnected(tempRings);
     }
     function isBoardConnected(rings) {
@@ -479,12 +497,205 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return count === rings.length;
     }
-    function checkWinCondition(player) {
-        const playerPawns = gameState.rings.filter(r => r.pawn === player);
+    function checkWinCondition(player, ringsList = gameState.rings) {
+        const playerPawns = ringsList.filter(r => r.pawn === player);
         if (playerPawns.length < 3) return false;
         const [p1, p2, p3] = playerPawns;
-        const areNeighbors = (a, b) => getNeighbors(a.q, a.r).some(n => n.q === b.q && n.r === b.r);
-        return (areNeighbors(p1, p2) && areNeighbors(p1, p3)) || (areNeighbors(p1, p2) && areNeighbors(p2, p3)) || (areNeighbors(p1, p3) && areNeighbors(p2, p3));
+        const d12 = hexDist(p1, p2) === 1;
+        const d13 = hexDist(p1, p3) === 1;
+        const d23 = hexDist(p2, p3) === 1;
+        return (d12 && d13) || (d12 && d23) || (d13 && d23);
+    }
+
+    // --- INTELIGENCIA ARTIFICIAL (BOT) ---
+    function cloneRings(rings) {
+        return rings.map(r => ({ q: r.q, r: r.r, pawn: r.pawn || null }));
+    }
+
+    function getLegalPawnMovesPure(rings, player) {
+        const moves = [];
+        const playerRings = rings.filter(r => r.pawn === player);
+        for (const from of playerRings) {
+            for (const dir of HEX_DIRECTIONS) {
+                let step = 1;
+                let lastValid = null;
+                while (true) {
+                    const nextRing = findRing(from.q + dir.q * step, from.r + dir.r * step, rings);
+                    if (!nextRing || nextRing.pawn) break;
+                    lastValid = nextRing;
+                    step++;
+                }
+                if (lastValid) {
+                    moves.push({ fromQ: from.q, fromR: from.r, toQ: lastValid.q, toR: lastValid.r });
+                }
+            }
+        }
+        return moves;
+    }
+
+    function getValidRingTargetsPure(rings, ringToRemove) {
+        const otherRings = rings.filter(r => !(r.q === ringToRemove.q && r.r === ringToRemove.r));
+        const occupiedSet = new Set(otherRings.map(r => `${r.q},${r.r}`));
+        const candidateCounts = new Map();
+
+        for (const r of otherRings) {
+            for (const dir of HEX_DIRECTIONS) {
+                const cQ = r.q + dir.q;
+                const cR = r.r + dir.r;
+                if (cQ === ringToRemove.q && cR === ringToRemove.r) continue;
+                const key = `${cQ},${cR}`;
+                if (occupiedSet.has(key)) continue;
+                candidateCounts.set(key, (candidateCounts.get(key) || 0) + 1);
+            }
+        }
+
+        const targets = [];
+        for (const [key, count] of candidateCounts.entries()) {
+            if (count >= 2) {
+                const [qStr, rStr] = key.split(',');
+                targets.push({ q: parseInt(qStr, 10), r: parseInt(rStr, 10) });
+            }
+        }
+        return targets;
+    }
+
+    function clusterDistance(rings, player) {
+        const pawns = rings.filter(r => r.pawn === player);
+        if (pawns.length < 3) return 99;
+        const d12 = hexDist(pawns[0], pawns[1]);
+        const d13 = hexDist(pawns[0], pawns[2]);
+        const d23 = hexDist(pawns[1], pawns[2]);
+        return Math.min(d12 + d13, d12 + d23, d13 + d23);
+    }
+
+    function countImmediateWinningMoves(rings, player) {
+        const moves = getLegalPawnMovesPure(rings, player);
+        let wins = 0;
+        for (const m of moves) {
+            const nextRings = cloneRings(rings);
+            findRing(m.fromQ, m.fromR, nextRings).pawn = null;
+            findRing(m.toQ, m.toR, nextRings).pawn = player;
+            if (checkWinCondition(player, nextRings)) wins++;
+        }
+        return wins;
+    }
+
+    function computeBestBotTurn() {
+        const diff = modes[currentModeIndex].diff || 'medium';
+        const initialRings = cloneRings(gameState.rings);
+        const pawnMoves = getLegalPawnMovesPure(initialRings, BOT_PLAYER);
+        if (pawnMoves.length === 0) return null;
+
+        for (const pm of pawnMoves) {
+            const afterPawn = cloneRings(initialRings);
+            findRing(pm.fromQ, pm.fromR, afterPawn).pawn = null;
+            findRing(pm.toQ, pm.toR, afterPawn).pawn = BOT_PLAYER;
+            if (checkWinCondition(BOT_PLAYER, afterPawn)) {
+                if (diff !== 'easy' || Math.random() < 0.7) {
+                    return { pawnMove: pm, ringMove: null };
+                }
+            }
+        }
+
+        const candidates = [];
+        for (const pm of pawnMoves) {
+            const afterPawn = cloneRings(initialRings);
+            findRing(pm.fromQ, pm.fromR, afterPawn).pawn = null;
+            findRing(pm.toQ, pm.toR, afterPawn).pawn = BOT_PLAYER;
+
+            const removable = afterPawn.filter(r =>
+                isValidRingToRemove(r, afterPawn, gameState.lastRelocatedRingCoords)
+            );
+
+            for (const rem of removable) {
+                const targets = getValidRingTargetsPure(afterPawn, rem);
+                for (const target of targets) {
+                    const afterRing = cloneRings(afterPawn);
+                    const moved = findRing(rem.q, rem.r, afterRing);
+                    moved.q = target.q;
+                    moved.r = target.r;
+
+                    const botDist = clusterDistance(afterRing, BOT_PLAYER);
+                    const humanDist = clusterDistance(afterRing, 1);
+                    let score = 0;
+
+                    if (diff === 'easy') {
+                        score = -botDist * 15 + Math.random() * 45;
+                    } else if (diff === 'medium') {
+                        const humanWins = countImmediateWinningMoves(afterRing, 1);
+                        score = (humanWins > 0 ? -15000 * humanWins : 0) - botDist * 60 + humanDist * 35 + Math.random() * 18;
+                    } else {
+                        const humanWins = countImmediateWinningMoves(afterRing, 1);
+                        const botThreats = countImmediateWinningMoves(afterRing, BOT_PLAYER);
+                        score = (humanWins > 0 ? -50000 * humanWins : 0) + botThreats * 450 - botDist * 120 + humanDist * 95 + Math.random() * 4;
+                    }
+
+                    candidates.push({
+                        pawnMove: pm,
+                        ringMove: { fromQ: rem.q, fromR: rem.r, toQ: target.q, toR: target.r },
+                        score
+                    });
+                }
+            }
+        }
+
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates[0];
+    }
+
+    function maybeTriggerBotTurn() {
+        if (isOnline || !modes[currentModeIndex].isBot || gameState.winner) return;
+        if (gameState.currentPlayer !== BOT_PLAYER) return;
+
+        botThinking = true;
+        updateStatus();
+
+        const t1 = setTimeout(() => {
+            const plan = computeBestBotTurn();
+            if (!plan) { botThinking = false; return; }
+
+            const fromRing = findRing(plan.pawnMove.fromQ, plan.pawnMove.fromR);
+            gameState.selectedPawn = fromRing;
+            renderBoard();
+
+            const t2 = setTimeout(() => {
+                const toRing = findRing(plan.pawnMove.toQ, plan.pawnMove.toR);
+                if (fromRing && toRing) {
+                    toRing.pawn = BOT_PLAYER;
+                    fromRing.pawn = null;
+                }
+                gameState.selectedPawn = null;
+
+                if (checkWinCondition(BOT_PLAYER)) {
+                    gameState.winner = BOT_PLAYER;
+                    botThinking = false;
+                    renderBoard(); updateStatus();
+                    return;
+                }
+
+                gameState.turnPhase = 'RELOCATE_RING';
+                renderBoard(); updateStatus();
+
+                const t3 = setTimeout(() => {
+                    if (plan.ringMove) {
+                        const ringToMove = findRing(plan.ringMove.fromQ, plan.ringMove.fromR);
+                        if (ringToMove) {
+                            ringToMove.q = plan.ringMove.toQ;
+                            ringToMove.r = plan.ringMove.toR;
+                            gameState.lastRelocatedRingCoords = { q: plan.ringMove.toQ, r: plan.ringMove.toR };
+                        }
+                    }
+                    gameState.currentPlayer = 1;
+                    gameState.turnPhase = 'MOVE_PAWN';
+                    botThinking = false;
+                    renderBoard(); updateStatus();
+                }, 450);
+                botTimeouts.push(t3);
+            }, 400);
+            botTimeouts.push(t2);
+        }, 400);
+        botTimeouts.push(t1);
     }
     
     function updateStatus() {
@@ -495,19 +706,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (gameState.winner) {
-             statusText.textContent = `¡El Jugador ${gameState.winner === 1 ? 'Rojo' : 'Azul'} ha ganado!`;
-             statusText.style.color = gameState.winner === 1 ? '#e74c3c' : '#3498db';
-             return;
+            statusText.textContent = `¡El Jugador ${gameState.winner === 1 ? 'Rojo' : 'Azul'} ha ganado!`;
+            statusText.style.color = gameState.winner === 1 ? '#e74c3c' : '#3498db';
+            return;
         }
         
         let text = "";
         if (isOnline) {
-             text += `(Tú eres ${myPlayerId === 1 ? 'Rojo' : 'Azul'}) - `;
+            text += `(Tú eres ${myPlayerId === 1 ? 'Rojo' : 'Azul'}) - `;
         }
         
         text += `Turno del ${gameState.currentPlayer === 1 ? 'Rojo' : 'Azul'}. `;
         if (gameState.turnPhase === 'MOVE_PAWN') text += 'Mueve peón.';
-        else text += 'Mueve aro.';
+        else text += 'Mueve Hexágono vacío del borde.';
         
         statusText.textContent = text;
         statusText.style.color = '#333';
@@ -516,8 +727,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function highlightElements() {
         document.querySelectorAll('.ring').forEach(r => r.classList.remove('selected', 'valid-move', 'peripheral'));
         
-        if (isSpectator) return; // Espectadores no ven highlights
+        if (isSpectator) return;
         if (isOnline && gameState.currentPlayer !== myPlayerId) return;
+        if (!isOnline && modes[currentModeIndex].isBot && gameState.currentPlayer === BOT_PLAYER) {
+            if (gameState.selectedPawn) {
+                const botEl = document.querySelector(`[data-q="${gameState.selectedPawn.q}"][data-r="${gameState.selectedPawn.r}"]`);
+                if (botEl) botEl.classList.add('selected');
+            }
+            return;
+        }
 
         if (gameState.selectedPawn) {
             const ringEl = document.querySelector(`[data-q="${gameState.selectedPawn.q}"][data-r="${gameState.selectedPawn.r}"]`);
@@ -532,7 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         if (gameState.turnPhase === 'RELOCATE_RING') {
-             gameState.rings.forEach(ring => {
+            gameState.rings.forEach(ring => {
                 if (isValidRingToRemove(ring)) {
                     const ringEl = document.querySelector(`[data-q="${ring.q}"][data-r="${ring.r}"]`);
                     if(ringEl) ringEl.classList.add('peripheral');
