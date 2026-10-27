@@ -97,6 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
         originalRing: null,
     };
 
+    // --- Cámara dinámica + Deslizar (Pan) ---
+    let currentViewBoxSize = 600;
+    let currentCenter = { x: 300, y: 300 };
+    let panOffset = { x: 0, y: 0 };
+    let panState = { isPanning: false, startX: 0, startY: 0, initialPanX: 0, initialPanY: 0 };
+
     // --- Coordenadas Hexagonales ---
     const axialToPixel = (q, r) => {
         const x = RING_SIZE * (3 / 2 * q);
@@ -110,8 +116,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pt.y = clientY;
         let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
 
-        const relativeX = svgP.x - 300; 
-        const relativeY = svgP.y - 300;
+        const relativeX = svgP.x - currentCenter.x; 
+        const relativeY = svgP.y - currentCenter.y;
 
         const q_frac = (2 / 3 * relativeX) / RING_SIZE;
         const r_frac = (-1 / 3 * relativeX + Math.sqrt(3) / 3 * relativeY) / RING_SIZE;
@@ -247,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Inicialización ---
     function initGame() {
         clearBotTimeouts();
+        panOffset = { x: 0, y: 0 };
         const initialCoords = [];
         const radius = 2;
         for (let q = -radius; q <= radius; q++) {
@@ -272,13 +279,37 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatus();
     }
 
+    function updateCameraBounds() {
+        if (!gameState.rings || gameState.rings.length === 0) {
+            currentViewBoxSize = 600;
+            currentCenter = { x: 300 + panOffset.x, y: 300 + panOffset.y };
+            return;
+        }
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        gameState.rings.forEach(ring => {
+            const p = axialToPixel(ring.q, ring.r);
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+        const padding = RING_SIZE * 2.5;
+        const spanX = (maxX - minX) + padding * 2;
+        const spanY = (maxY - minY) + padding * 2;
+        currentViewBoxSize = Math.max(600, Math.ceil(Math.max(spanX, spanY)));
+        const midX = (minX + maxX) / 2;
+        const midY = (minY + maxY) / 2;
+        currentCenter = {
+            x: currentViewBoxSize / 2 - midX + panOffset.x,
+            y: currentViewBoxSize / 2 - midY + panOffset.y
+        };
+    }
+
     // --- Renderizado ---
     function renderBoard() {
         svg.innerHTML = '';
-        
-        const VIEW_BOX_SIZE = 600;
-        svg.setAttribute('viewBox', `0 0 ${VIEW_BOX_SIZE} ${VIEW_BOX_SIZE}`);
-        const center = { x: VIEW_BOX_SIZE / 2, y: VIEW_BOX_SIZE / 2 };
+        updateCameraBounds();
+        svg.setAttribute('viewBox', `0 0 ${currentViewBoxSize} ${currentViewBoxSize}`);
 
         gameState.rings.forEach(ring => {
             const pixel = axialToPixel(ring.q, ring.r);
@@ -289,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
             polygon.setAttribute('points', points);
             polygon.setAttribute('class', 'ring');
-            polygon.setAttribute('transform', `translate(${center.x + pixel.x}, ${center.y + pixel.y})`);
+            polygon.setAttribute('transform', `translate(${currentCenter.x + pixel.x}, ${currentCenter.y + pixel.y})`);
             polygon.dataset.q = ring.q;
             polygon.dataset.r = ring.r;
             polygon.addEventListener('click', onRingClick);
@@ -304,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ring.pawn) {
                 const pixel = axialToPixel(ring.q, ring.r);
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', center.x + pixel.x);
-                circle.setAttribute('cy', center.y + pixel.y);
+                circle.setAttribute('cx', currentCenter.x + pixel.x);
+                circle.setAttribute('cy', currentCenter.y + pixel.y);
                 circle.setAttribute('r', RING_SIZE * 0.5);
                 circle.setAttribute('class', `pawn player${ring.pawn}`);
                 circle.style.pointerEvents = 'none';
@@ -314,6 +345,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         highlightElements();
     }
+
+    // --- Deslizar / Panear el tablero arrastrando el fondo ---
+    function startPan(e) {
+        if (carryState.isCarrying || e.target !== svg) return;
+        const pt = e.touches && e.touches.length > 0 ? e.touches[0] : e;
+        panState.isPanning = true;
+        panState.startX = pt.clientX;
+        panState.startY = pt.clientY;
+        panState.initialPanX = panOffset.x;
+        panState.initialPanY = panOffset.y;
+        svg.style.cursor = 'grabbing';
+    }
+
+    function movePan(e) {
+        if (!panState.isPanning) return;
+        if (e.type === 'touchmove') e.preventDefault();
+        const pt = e.touches && e.touches.length > 0 ? e.touches[0] : e;
+        const ctm = svg.getScreenCTM();
+        const scale = ctm ? ctm.a : 1;
+        panOffset.x = panState.initialPanX + (pt.clientX - panState.startX) / scale;
+        panOffset.y = panState.initialPanY + (pt.clientY - panState.startY) / scale;
+        renderBoard();
+    }
+
+    function endPan() {
+        if (!panState.isPanning) return;
+        panState.isPanning = false;
+        svg.style.cursor = 'grab';
+    }
+
+    svg.style.cursor = 'grab';
+    svg.addEventListener('mousedown', startPan);
+    svg.addEventListener('touchstart', startPan, { passive: false });
+    document.addEventListener('mousemove', movePan);
+    document.addEventListener('touchmove', movePan, { passive: false });
+    document.addEventListener('mouseup', endPan);
+    document.addEventListener('touchend', endPan);
 
     // --- Manejo de Eventos ---
     function onRingClick(event) {
@@ -371,10 +439,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clientY = event.clientY;
         }
 
-        const CTM = svg.getScreenCTM();
-        const mouseX = (clientX - CTM.e) / CTM.a;
-        const mouseY = (clientY - CTM.f) / CTM.d;
-        carryState.carriedElement.setAttribute('transform', `translate(${mouseX}, ${mouseY})`);
+        let pt = svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+        carryState.carriedElement.setAttribute('transform', `translate(${svgP.x}, ${svgP.y})`);
     }
 
     function tryPlaceRing(event) {
